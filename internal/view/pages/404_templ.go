@@ -12,7 +12,7 @@ import "bytes"
 
 import "github.com/RATIU5/chewbacca/internal/view/layout"
 
-func ShowResults() templ.Component {
+func ShowNotFound() templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, templ_7745c5c3_W io.Writer) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templ_7745c5c3_W.(*bytes.Buffer)
 		if !templ_7745c5c3_IsBuffer {
@@ -31,7 +31,7 @@ func ShowResults() templ.Component {
 				templ_7745c5c3_Buffer = templ.GetBuffer()
 				defer templ.ReleaseBuffer(templ_7745c5c3_Buffer)
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<h1>Hello from the results page</h1>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"w-full h-full flex justify-center items-center bg-neutral-900\"><div class=\"flex items-center gap-8 text-neutral-100\"><img src=\"/assets/img/404.png\" class=\"w-72 h-72 rounded-lg\" alt=\"Girl making a face\"><div class=\"flex flex-col gap-2\"><h1 class=\"font-bold text-4xl\">404</h1><p class=\"text-lg\">Uh-oh! Thwis pwage cwanot be fwound. UwU</p></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

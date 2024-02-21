@@ -2,15 +2,16 @@ package layout
 
 templ Base() {
   <!DOCTYPE html>
-  <html lang="en">
+  <html lang="en" class="w-full h-full bg-neutral-900 text-neutral-100">
   <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <meta http-equiv="X-UA-Compatible" content="ie=edge" />
       <meta name="description" content="Chewbacca is a pretty nifty web crawler that targets and fires upon 404 assets and dead links, never missing!" />
+      <link href="/assets/tailwind.css" rel="stylesheet" />
       <title>Chewbacca</title>
   </head>
-  <body>
+  <body class="w-full h-full">
       { children... }
   </body>
   </html>

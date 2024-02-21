@@ -1,18 +1,38 @@
 package main
 
 import (
-	"github.com/RATIU5/chewbacca/handler"
+	"net/http"
+
+	"github.com/RATIU5/chewbacca/internal/handler"
 	"github.com/labstack/echo/v4"
 )
 
 func main() {
 	app := echo.New()
 
+	// Serve static assets under /assets in the url
+	app.Static("assets", "internal/assets/dist")
+
+	// Serve the root index page
 	indexHandler := handler.IndexHandler{}
 	app.GET("/", indexHandler.HandleIndexShow)
 
+	// Serve the results page
 	resultsHandler := handler.ResultsHandler{}
 	app.GET("/results", resultsHandler.HandleResultsShow)
 
-	app.Start(":3000")	
+	// Serve error pages
+	app.HTTPErrorHandler = func(err error, c echo.Context) {
+		code := http.StatusInternalServerError
+		if he, ok := err.(*echo.HTTPError); ok {
+			code = he.Code
+		}
+
+		if code == http.StatusNotFound {
+			notFoundHandler := handler.NotFoundHandler{}
+			notFoundHandler.HandleNotFoundShow(c)
+		}
+	}
+
+	app.Start("localhost:3000")
 }
