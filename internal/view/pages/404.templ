@@ -5,8 +5,8 @@ import "github.com/RATIU5/chewbacca/internal/view/layout"
 templ ShowNotFound() {
   @layout.Base() {
     <div class="w-full h-full flex justify-center items-center bg-neutral-900">
-        <div class="flex items-center gap-8 text-neutral-100">
-            <img src="/assets/img/404.png" class="w-72 h-72 rounded-lg" alt="Girl making a face" />
+        <div class="flex flex-col items-center gap-8 text-neutral-100 md:flex-row px-4">
+            <img src="/assets/img/404.png" class="w-72 h-72 rounded-lg object-cover" alt="Girl making a face" />
             <div class="flex flex-col gap-2">
                 <h1 class="font-bold text-4xl">404</h1>
                 <p class="text-lg">Uh-oh! Thwis pwage cwanot be fwound. UwU</p>
