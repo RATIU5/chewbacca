@@ -17,10 +17,6 @@ func main() {
 	indexHandler := handler.IndexHandler{}
 	app.GET("/", indexHandler.HandleIndexShow)
 
-	// Serve the results page
-	resultsHandler := handler.ResultsHandler{}
-	app.GET("/results", resultsHandler.HandleResultsShow)
-
 	// Serve error pages
 	app.HTTPErrorHandler = func(err error, c echo.Context) {
 		code := http.StatusInternalServerError

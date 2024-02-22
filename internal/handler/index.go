@@ -8,5 +8,12 @@ import (
 type IndexHandler struct{}
 
 func (i IndexHandler) HandleIndexShow(c echo.Context) error {
+
+	addr := c.QueryParams().Get("addr")
+
+	if (addr != "") {
+		
+	}
 	return render(c, pages.ShowIndex())
+
 }
