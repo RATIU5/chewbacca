@@ -1,40 +1,37 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/RATIU5/chewbacca/internal/handler"
-	"github.com/labstack/echo/v4"
 )
 
-func main() {
-	app := echo.New()
+type server struct{}
 
-	// Serve static assets under /assets in the url
-	app.Static("assets", "internal/assets/dist")
-
-	// Serve the root index page
-	indexHandler := handler.IndexHandler{}
-	app.GET("/", indexHandler.HandleIndexShow)
-
-	processAddrHandler := handler.ProcessAddrHandler{}
-	app.POST("/process-addr", processAddrHandler.HandleProcessAddr)
-
-	resultsHandler := handler.ResultsHandler{}
-	app.GET("/results", resultsHandler.ResultsAddr)
-
-	// Serve error pages
-	app.HTTPErrorHandler = func(err error, c echo.Context) {
-		code := http.StatusInternalServerError
-		if he, ok := err.(*echo.HTTPError); ok {
-			code = he.Code
-		}
-
-		if code == http.StatusNotFound {
-			notFoundHandler := handler.NotFoundHandler{}
-			notFoundHandler.HandleNotFoundShow(c)
-		}
+func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.URL.Path {
+	case "/":
+		handler.IndexHandler(w, r)
+	case "/process-addr":
+		handler.ProcessAddrHandler(w, r)
+	case "/stream":
+		handler.StreamHandler(w, r)
+	default:
+		handler.NotFoundHandler(w, r)
 	}
+}
 
-	app.Start("localhost:3000")
+func main() {
+	var s server
+	http.Handle("/", &s)
+
+	// Serve static assets through the /assets/ url path
+	fs := http.FileServer(http.Dir("internal/assets/dist"))
+	http.Handle("/assets/", http.StripPrefix("/assets/", fs))
+
+	fmt.Println("Running on http://localhost:8080")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		panic(err)
+	}
 }

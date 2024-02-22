@@ -1,19 +1,12 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/RATIU5/chewbacca/internal/view/pages"
-	"github.com/labstack/echo/v4"
+	"github.com/a-h/templ"
 )
 
-type IndexHandler struct{}
-
-func (i IndexHandler) HandleIndexShow(c echo.Context) error {
-
-	addr := c.QueryParams().Get("addr")
-
-	if (addr != "") {
-		
-	}
-	return render(c, pages.ShowIndex())
-
+func IndexHandler(w http.ResponseWriter, r *http.Request) {
+	templ.Handler(pages.ShowIndex()).ServeHTTP(w, r)
 }

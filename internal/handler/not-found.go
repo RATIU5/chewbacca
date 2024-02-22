@@ -1,12 +1,13 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/RATIU5/chewbacca/internal/view/pages"
-	"github.com/labstack/echo/v4"
+	"github.com/a-h/templ"
 )
 
-type NotFoundHandler struct{}
-
-func (i NotFoundHandler) HandleNotFoundShow(c echo.Context) error {
-	return render(c, pages.ShowNotFound())
+func NotFoundHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	templ.Handler(pages.ShowNotFound()).ServeHTTP(w, r)
 }

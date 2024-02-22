@@ -1,0 +1,15 @@
+package components
+
+templ TableResponseShow(addr string) {
+    <table id="data-table" hx-ext="sse" sse-connect={"/stream?addr="+addr} sse-swap="message" hx-target="#data-table tbody">
+        <thead>
+            <tr>
+                <th>Root Path</th>
+                <th>Processed Path</th>
+                <th>Response</th>
+                <th>Title</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+}
