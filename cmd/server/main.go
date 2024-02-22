@@ -16,9 +16,12 @@ func main() {
 	// Serve the root index page
 	indexHandler := handler.IndexHandler{}
 	app.GET("/", indexHandler.HandleIndexShow)
-	
+
 	processAddrHandler := handler.ProcessAddrHandler{}
 	app.POST("/process-addr", processAddrHandler.HandleProcessAddr)
+
+	resultsHandler := handler.ResultsHandler{}
+	app.GET("/results", resultsHandler.ResultsAddr)
 
 	// Serve error pages
 	app.HTTPErrorHandler = func(err error, c echo.Context) {

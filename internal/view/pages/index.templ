@@ -15,7 +15,13 @@ templ ShowIndex() {
 					<h1 class="text-4xl uppercase mb-1">Chewbacca</h1>
 					<p class="text-sm text-neutral-400">The 404 asset locator</p>
 				</div>
-				<form class="w-full flex flex-col gap-4">
+				<form
+					class="w-full flex flex-col gap-4"
+					hx-post="/process-addr"
+					hx-target="#formResponse"
+					hx-swap="innerHTML"
+					hx-indicator="#spinner"
+				>
 					<div class="w-full">
 						<input
 							type="text"
@@ -28,10 +34,6 @@ templ ShowIndex() {
 					</div>
 					<div class="flex flex-col items-center md:flex-row-reverse">
 						<button
-							hx-post="/process-addr"
-							hx-target="#formResponse"
-							hx-swap="outerHTML"
-							hx-indicator="#spinner"
 							type="submit"
 							class="block max-w-md bg-neutral-800 text-sm px-4 mb-2 py-2 w-36 h-12 text-neutral-300 rounded-md hover:bg-neutral-700 active:bg-neutral-700 transition ease"
 						>
@@ -53,7 +55,7 @@ templ ShowIndex() {
 						<div
 							id="formResponse"
 							class="text-red-600 text-center md:text-left md:flex-grow"
-						>That doesn't appear to be a valid URL</div>
+						></div>
 					</div>
 				</form>
 			</div>

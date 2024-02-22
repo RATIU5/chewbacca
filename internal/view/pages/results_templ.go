@@ -12,7 +12,7 @@ import "bytes"
 
 import "github.com/RATIU5/chewbacca/internal/view/layout"
 
-func ShowIndex() templ.Component {
+func ShowResults() templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, templ_7745c5c3_W io.Writer) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templ_7745c5c3_W.(*bytes.Buffer)
 		if !templ_7745c5c3_IsBuffer {
@@ -31,7 +31,7 @@ func ShowIndex() templ.Component {
 				templ_7745c5c3_Buffer = templ.GetBuffer()
 				defer templ.ReleaseBuffer(templ_7745c5c3_Buffer)
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"w-full h-full flex justify-center items-center\"><div class=\"max-w-xl lg:max-w-3xl w-full flex flex-col items-center px-4\"><img src=\"/assets/img/chewbacca.png\" alt=\"Chewbacca\" class=\"w-32 h-32 mb-4 object-cover\"><div class=\"w-full text-center mb-4\"><h1 class=\"text-4xl uppercase mb-1\">Chewbacca</h1><p class=\"text-sm text-neutral-400\">The 404 asset locator</p></div><form class=\"w-full flex flex-col gap-4\" hx-post=\"/process-addr\" hx-target=\"#formResponse\" hx-swap=\"innerHTML\" hx-indicator=\"#spinner\"><div class=\"w-full\"><input type=\"text\" name=\"addr\" id=\"addr\" placeholder=\"https://www.example.com/\" class=\"bg-neutral-800 border border-solid border-neutral-700 h-12 px-4 w-full mt-4 rounded-md lg:mb-0 outline-[#FF9908] shadow-none\" required></div><div class=\"flex flex-col items-center md:flex-row-reverse\"><button type=\"submit\" class=\"block max-w-md bg-neutral-800 text-sm px-4 mb-2 py-2 w-36 h-12 text-neutral-300 rounded-md hover:bg-neutral-700 active:bg-neutral-700 transition ease\"><svg class=\"spinner animate-spin\" id=\"spinner\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 12a9 9 0 1 1-6.219-8.56\"></path></svg> <span>Rrrrr-ghghghgh!</span></button><div id=\"formResponse\" class=\"text-red-600 text-center md:text-left md:flex-grow\"></div></div></form></div></div>")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<div class=\"container\"><h1>Results</h1><table><thead><tr><th>Root Address</th><th>Processed Address</th><th>Status</th><th>Title</th></tr></thead> <tbody></tbody></table></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
