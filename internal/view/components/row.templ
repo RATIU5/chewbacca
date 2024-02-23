@@ -1,10 +1,13 @@
 package components
 
-templ RowShow() {
+import "github.com/RATIU5/chewbacca/internal/model"
+import "fmt"
+
+templ RowShow(route model.Route) {
 	<tr>
-		<td>test</td>
-		<td>test</td>
-		<td>test</td>
-		<td>test</td>
+		<td>{ route.RootAddr.Host }</td>
+		<td>{ route.ProcessAddr.Host }</td>
+		<td>{ fmt.Sprintf("%d", route.Status) }</td>
+		<td>{ route.Title }</td>
 	</tr>
 }

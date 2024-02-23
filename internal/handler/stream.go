@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
-	"time"
+	"net/url"
 
+	"github.com/RATIU5/chewbacca/internal/model"
 	"github.com/RATIU5/chewbacca/internal/view/components"
+	"github.com/gocolly/colly"
 )
 
 func StreamHandler(w http.ResponseWriter, r *http.Request) {
@@ -14,31 +16,68 @@ func StreamHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-			http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-			return
+	queryParams := r.URL.Query()
+	addrStr := queryParams.Get("addr")
+	addr, err := url.Parse(addrStr)
+	if err != nil {
+		http.Error(w, "Failed to parse URL", http.StatusInternalServerError)
 	}
 
-	ctx := r.Context() // Get the request's context
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		return
+	}
 
-	for {
-			select {
-			case <-ctx.Done(): // Check if client connection is closed
-					fmt.Println("Client has closed the connection")
-					return
-			default:
-					var buf bytes.Buffer
-					// Assuming components.RowShow().Render writes HTML content to buf
-					components.RowShow().Render(ctx, &buf)
+	ctx := r.Context()
 
-					// Properly format the data for SSE
-					fmt.Fprintf(w, "data: %s\n\n", buf.String())
+	c := colly.NewCollector()
 
-					// Flush the data immediately after writing
-					flusher.Flush()
+	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
+		e.Request.Visit(e.Attr("href"))
+	})
 
-					time.Sleep(1 * time.Second) // Be cautious with production use
-			}
+	c.OnError(func(r *colly.Response, err error) {
+		route := model.NewRoute(*addr, *r.Request.URL, int16(r.StatusCode), "")
+		if ctx.Err() != nil {
+			return
+		} else {
+			var buf bytes.Buffer
+			components.RowShow(*route).Render(ctx, &buf)
+
+			// Properly format the data for SSE
+			fmt.Fprintf(w, "data: %s\n\n", buf.String())
+
+			flusher.Flush()
+		}
+	})
+
+	c.OnRequest(func(r *colly.Request) {
+		route := model.NewRoute(*addr, *r.URL, 200, "")
+		if ctx.Err() != nil {
+			return
+		} else {
+			var buf bytes.Buffer
+			components.RowShow(*route).Render(ctx, &buf)
+
+			// Properly format the data for SSE
+			fmt.Fprintf(w, "data: %s\n\n", buf.String())
+
+			flusher.Flush()
+		}
+	})
+
+	c.Visit(addrStr)
+
+	if ctx.Err() != nil {
+		return
+	} else {
+		var buf bytes.Buffer
+		components.ShowTermStream().Render(ctx, &buf)
+
+		// Properly format the data for SSE
+		fmt.Fprintf(w, "data: %s\n\n", buf.String())
+
+		flusher.Flush()
 	}
 }
