@@ -51,8 +51,6 @@ func GetRoutesHandler(w http.ResponseWriter, r *http.Request) {
 		// Format the URL
 		url = FormatURL(url)
 
-		fmt.Println("Visiting", url)
-
 		e.Request.Visit(url)
 	})
 
@@ -81,7 +79,9 @@ func FormatURL(url string) string {
 
 	// Add a trailing slash if the URL doesn't have:
 	// - a file extension
-	// - a query strin
+	// - a query string
+	// - a hash
+	// - a trailing slash
 	if !strings.Contains(path.Base(url), ".") && !strings.Contains(url, "?") && !strings.Contains(url, "#") && !strings.HasSuffix(url, "/") {
 		urlFormatted += "/"
 	}
