@@ -6,7 +6,7 @@ import "fmt"
 templ RowShow(route model.Route) {
 	<tr>
 		<td>{ route.RootAddr.Host }</td>
-		<td>{ route.ProcessAddr.Host }</td>
+		<td>{ route.CurrentAddr.Host }</td>
 		<td>{ fmt.Sprintf("%d", route.Status) }</td>
 		<td>{ route.Title }</td>
 	</tr>

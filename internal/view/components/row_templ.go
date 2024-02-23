@@ -44,7 +44,7 @@ func RowShow(route model.Route) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(route.ProcessAddr.Host)
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(route.CurrentAddr.Host)
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/components/row.templ`, Line: 8, Col: 30}
 		}
