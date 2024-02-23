@@ -23,15 +23,15 @@ func TableResponseShow(addr string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<table id=\"sse-listener\" hx-ext=\"sse\" sse-connect=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("<table id=\"sse-listener\" hx-get=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString("/stream?addr=" + addr))
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString("/get-routes?addr=" + addr))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" sse-swap=\"message\" hx-swap=\"beforeend\" hx-target=\"#row-container\"><thead><tr><th>Root Path</th><th>Processed Path</th><th>Response</th><th>Title</th></tr></thead> <tbody id=\"row-container\"></tbody></table>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString("\" hx-trigger=\"load\" hx-swap=\"innnerHTML\" hx-target=\"#row-container\"><thead><tr><th>Root Path</th><th>Processed Path</th><th>Response</th><th>Title</th></tr></thead> <tbody id=\"row-container\"></tbody></table>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

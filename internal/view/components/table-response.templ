@@ -1,7 +1,7 @@
 package components
 
 templ TableResponseShow(addr string) {
-    <table id="sse-listener" hx-ext="sse" sse-connect={"/stream?addr="+addr} sse-swap="message" hx-swap="beforeend" hx-target="#row-container">
+    <table id="sse-listener" hx-get={ "/get-routes?addr=" + addr } hx-trigger="load" hx-swap="innnerHTML" hx-target="#row-container">
         <thead>
             <tr>
                 <th>Root Path</th>
