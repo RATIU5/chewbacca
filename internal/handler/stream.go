@@ -1,14 +1,11 @@
 package handler
 
 import (
-	"context"
+	"bytes"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"time"
 
-	"github.com/RATIU5/chewbacca/internal/model"
 	"github.com/RATIU5/chewbacca/internal/view/components"
 )
 
@@ -17,24 +14,31 @@ func StreamHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	url1, _ := url.Parse("https://example.com/")
-	url2, _ := url.Parse("https://example.com/test")
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+			http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+			return
+	}
 
-	route := model.NewRoute(*url1, *url2, 200, "Example Website")
+	ctx := r.Context() // Get the request's context
 
 	for {
-		var wr io.Writer
-		components.RowShow(*route).Render(context.Background(), wr)
+			select {
+			case <-ctx.Done(): // Check if client connection is closed
+					fmt.Println("Client has closed the connection")
+					return
+			default:
+					var buf bytes.Buffer
+					// Assuming components.RowShow().Render writes HTML content to buf
+					components.RowShow().Render(ctx, &buf)
 
-		fmt.Println(wr)
+					// Properly format the data for SSE
+					fmt.Fprintf(w, "data: %s\n\n", buf.String())
 
-		// Flush the data immediately
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		} else {
-			fmt.Println("Failed to flush")
-		}
+					// Flush the data immediately after writing
+					flusher.Flush()
 
-		time.Sleep(1 * time.Second)
+					time.Sleep(1 * time.Second) // Be cautious with production use
+			}
 	}
 }
