@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 	"time"
 
@@ -49,7 +48,7 @@ func GetRoutesHandler(w http.ResponseWriter, r *http.Request) {
 	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		link := e.Attr("href")
 
-		if !ValidateURL(link) {
+		if !IsValidURL(link) {
 			return
 		}
 
@@ -75,30 +74,4 @@ func GetRoutesHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Total execution time: %s\n", elapsedTime)
 
 	visitedUrls = make(map[string]struct{})
-}
-
-func ValidateURL(uri string) bool {
-	return !(strings.HasPrefix(uri, "tel:") || strings.HasPrefix(uri, "mailto:") || strings.HasPrefix(uri, "#"))
-}
-
-func FormatURL(url string) string {
-	var urlFormatted string = url
-	if idx := strings.Index(url, "#"); idx != -1 {
-		urlFormatted = url[:idx] + "/"
-	}
-
-	if !strings.Contains(path.Base(url), ".") && !strings.Contains(url, "?") && !strings.HasSuffix(url, "/") {
-		urlFormatted += "/"
-	}
-
-	return strings.Replace(urlFormatted, "www.", "", 1)
-}
-
-func addUrlToCache(url string) {
-	visitedUrls[url] = struct{}{}
-}
-
-func urlInCache(url string) bool {
-	_, found := visitedUrls[url]
-	return found
 }

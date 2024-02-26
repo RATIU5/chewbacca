@@ -17,8 +17,6 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		handler.ProcessAddrHandler(w, r)
 	case "/get-routes":
 		handler.GetRoutesHandler(w, r)
-	case "/test":
-		handler.TestHandler(w, r)
 	default:
 		handler.NotFoundHandler(w, r)
 	}

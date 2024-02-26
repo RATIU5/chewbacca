@@ -16,8 +16,8 @@ templ TableResponseShow(badUrls []model.Route) {
 		<tbody>
 			for _, url := range badUrls {
 				<tr>
-					<td>{ url.RootAddr }</td>
-					<td>{ url.CurrentAddr }</td>
+					<td>{ url.RootAddr.String() }</td>
+					<td>{ url.CurrentAddr.String() }</td>
 					<td>{ fmt.Sprintf("%d", url.Status) }</td>
 					<td>{ url.Title }</td>
 				</tr>
