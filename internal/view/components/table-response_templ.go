@@ -13,7 +13,7 @@ import "bytes"
 import "github.com/RATIU5/chewbacca/internal/model"
 import "fmt"
 
-func TableResponseShow(badUrls []model.Route) templ.Component {
+func TableResponseShow(badUrls map[string]model.Route) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, templ_7745c5c3_W io.Writer) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templ_7745c5c3_W.(*bytes.Buffer)
 		if !templ_7745c5c3_IsBuffer {
@@ -35,7 +35,7 @@ func TableResponseShow(badUrls []model.Route) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var2 templ.SafeURL = templ.SafeURL(url.RootAddr.String())
+			var templ_7745c5c3_Var2 templ.SafeURL = templ.SafeURL(url.Route)
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var2)))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -45,9 +45,9 @@ func TableResponseShow(badUrls []model.Route) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(url.RootTitle)
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(url.Route)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/components/table-response.templ`, Line: 17, Col: 136}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/components/table-response.templ`, Line: 17, Col: 120}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -57,7 +57,7 @@ func TableResponseShow(badUrls []model.Route) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var4 templ.SafeURL = templ.SafeURL(url.CurrentAddr.String())
+			var templ_7745c5c3_Var4 templ.SafeURL = templ.SafeURL(url.URL)
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(string(templ_7745c5c3_Var4)))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -67,9 +67,9 @@ func TableResponseShow(badUrls []model.Route) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(url.CurrentTitle)
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(url.URLText)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/components/table-response.templ`, Line: 18, Col: 95}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/components/table-response.templ`, Line: 18, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {

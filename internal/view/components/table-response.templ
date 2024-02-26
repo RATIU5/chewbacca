@@ -3,7 +3,7 @@ package components
 import "github.com/RATIU5/chewbacca/internal/model"
 import "fmt"
 
-templ TableResponseShow(badUrls []model.Route) {
+templ TableResponseShow(badUrls map[string]model.Route) {
 	<table>
 		<thead>
 			<tr>
@@ -15,8 +15,8 @@ templ TableResponseShow(badUrls []model.Route) {
 		<tbody>
 			for _, url := range badUrls {
 				<tr>
-					<td><a href={ templ.SafeURL(url.RootAddr.String()) } target="_blank" class="truncate text-ellipsis overflow-hidden">{ url.RootTitle }</a></td>
-					<td><a href={ templ.SafeURL(url.CurrentAddr.String()) } target="_blank">{ url.CurrentTitle }</a></td>
+					<td><a href={ templ.SafeURL(url.Route) } target="_blank" class="truncate text-ellipsis overflow-hidden">{ url.Route }</a></td>
+					<td><a href={ templ.SafeURL(url.URL) } target="_blank">{ url.URLText }</a></td>
 					<td>{ fmt.Sprintf("%d", url.Status) }</td>
 				</tr>
 			}

@@ -6,116 +6,101 @@ import (
 	"net/url"
 	"strings"
 	"sync"
-	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/RATIU5/chewbacca/internal/model"
-	"github.com/RATIU5/chewbacca/internal/view/components"
-	"github.com/a-h/templ"
-	"github.com/gocolly/colly"
+)
+
+var (
+	processedLinks sync.Map // To store processed links
+	wg             sync.WaitGroup
 )
 
 func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
-	var badURLsList []model.Route
-	var mutex sync.Mutex // For safe concurrent access to badURLsList
+	rootRoute := r.FormValue("addr")
+	rootDomain := getRootDomain(rootRoute) // Implement this function based on your requirements
 
-	startTime := time.Now()
-	queryParams := r.FormValue("addr")
+	// Initialize the map and start scanning from the root route
+	processedLinks = sync.Map{}
+	wg.Add(1)
+	scanRoute(rootRoute, 0, 3, rootDomain) // Passing rootDomain to scanRoute
 
-	if queryParams == "" {
-		templ.Handler(components.ErrResponseShow("A URL to search was not provided")).ServeHTTP(w, r)
+	wg.Wait() // Wait for all goroutines to finish
+
+	// Iterate over processedLinks and print them
+	processedLinks.Range(func(key, value interface{}) bool {
+		route := value.(model.Route) // Correct type assertion
+		fmt.Printf("Route: %s, URL: %s, Status: %d\n", route.Route, route.URL, route.Status)
+		return true // Continue iteration
+	})
+}
+
+func scanRoute(route string, currentDepth, maxDepth uint8, rootDomain string) {
+	defer wg.Done()
+	if currentDepth > maxDepth {
 		return
 	}
 
-	addrUrl, err := url.Parse(queryParams)
+	// Check if the route is already processed
+	if _, loaded := processedLinks.Load(route); loaded {
+		return
+	}
+
+	resp, err := http.Get(route)
 	if err != nil {
-		templ.Handler(components.ErrResponseShow("An invalid URL was provided")).ServeHTTP(w, r)
+		fmt.Println("Error fetching route:", route, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	document, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		fmt.Println("Error parsing the document:", err)
 		return
 	}
 
-	domainWithoutWWW := strings.TrimPrefix(addrUrl.Hostname(), "www.")
-	domainWithWWW := "www." + strings.TrimPrefix(addrUrl.Hostname(), "www.")
+	status := int16(resp.StatusCode)
+	newRoute := model.Route{
+		Route:  route,
+		URL:    route, // Assuming the URL is the route itself
+		Status: status,
+	}
+	processedLinks.Store(route, newRoute)
 
-	c := colly.NewCollector(
-		colly.Async(false),
-		colly.MaxDepth(4),
-		colly.AllowedDomains(domainWithWWW, domainWithoutWWW),
-		// colly.CacheDir("./cache"),
-	)
-
-	// c.Limit(&colly.LimitRule{
-	// 	DomainGlob:  "*.*",
-	// 	Parallelism: 10,
-	// })
-
-	c.OnRequest(func(r *colly.Request) {
-		r.Ctx.Put("rootURL", r.URL.String())
-	})
-
-	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		targetURL := e.Attr("href")
-		if !IsValidURL(targetURL) {
-			return
-		}
-
-		e.Request.Ctx.Put("referrerURL", e.Request.URL.String())
-		e.Request.Ctx.Put("currTitle", e.Text)
-
-		targetURL = e.Request.AbsoluteURL(targetURL)
-		targetURL = FormatURL(targetURL)
-		fmt.Println("Visiting URL:", targetURL, "with title:", e.Text)
-		e.Request.Visit(targetURL)
-	})
-
-	c.OnError(func(r *colly.Response, err error) {
-		mutex.Lock()
-		defer mutex.Unlock()
-		referrerURL, er := url.Parse(r.Ctx.Get("referrerURL"))
-		if er != nil {
-			fmt.Println("Error parsing root URL:", err)
-		} else {
-			url := strings.Split(referrerURL.String(), "?")[0]
-			badURLsList = append(badURLsList,
-				model.Route{
-					RootAddr:     referrerURL,
-					RootTitle:    url,
-					CurrentAddr:  r.Request.URL,
-					CurrentTitle: r.Ctx.Get("currTitle"),
-					Status:       int16(r.StatusCode),
-				})
+	document.Find("a").Each(func(index int, element *goquery.Selection) {
+		href, exists := element.Attr("href")
+		if exists && IsValidURL(href) {
+			// Correctly form the full URL if href is a relative path
+			absoluteHref := href
+			if !strings.HasPrefix(href, "http") {
+				absoluteHref = rootDomain + href
+			}
+			// Ensure the link is within the root domain
+			if strings.HasPrefix(absoluteHref, rootDomain) {
+				wg.Add(1)
+				go func(link string) {
+					scanRoute(link, currentDepth+1, maxDepth, rootDomain)
+				}(absoluteHref)
+			}
 		}
 	})
-
-	c.Visit(addrUrl.String())
-	c.Wait()
-
-	elapsedTime := time.Since(startTime)
-	fmt.Printf("Total execution time: %s\n", elapsedTime)
-
-	fmt.Println("Total Bad URLs:", len(badURLsList))
-	templ.Handler(components.TableResponseShow(badURLsList)).ServeHTTP(w, r)
 }
 
 func IsValidURL(link string) bool {
+	// Your existing validation logic
 	return !(strings.HasPrefix(link, "tel:") ||
 		strings.HasPrefix(link, "mailto:") ||
 		strings.HasPrefix(link, "#") ||
 		strings.HasPrefix(link, "javascript:"))
 }
 
-func FormatURL(url string) string {
-	var urlFormatted string = url
-	if idx := strings.Index(url, "#"); idx != -1 {
-		urlFormatted = url[:idx] + "/"
+// getRootDomain extracts the root domain from a given URL.
+// Implement this based on your URL structure and validation needs.
+func getRootDomain(urlAddr string) string {
+	// Simple example implementation, adjust as needed
+	parsedURL, err := url.Parse(urlAddr)
+	if err != nil {
+		return ""
 	}
-
-	return strings.Replace(urlFormatted, "www.", "", 1)
-}
-
-func addUrlToCache(url string) {
-	visitedUrls[url] = struct{}{}
-}
-
-func urlInCache(url string) bool {
-	_, found := visitedUrls[url]
-	return found
+	return parsedURL.Scheme + "://" + parsedURL.Host
 }

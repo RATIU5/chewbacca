@@ -764,10 +764,6 @@ select {
   margin-top: 18rem;
 }
 
-.block {
-  display: block;
-}
-
 .flex {
   display: flex;
 }
@@ -983,15 +979,15 @@ select {
   display: none;
 }
 
-.htmx-request .spinner {
-  display: inline;
+button span {
+  display: flex;
 }
 
-.htmx-request.spinner {
-  display: inline;
+.htmx-request {
+  display: flex;
 }
 
-.htmx-request.spinner ~ .button-text {
+.htmx-request + span {
   display: none;
 }
 
@@ -1003,6 +999,11 @@ select {
 .active\:bg-neutral-700:active {
   --tw-bg-opacity: 1;
   background-color: rgb(64 64 64 / var(--tw-bg-opacity));
+}
+
+.disabled\:hover\:bg-neutral-800:hover:disabled {
+  --tw-bg-opacity: 1;
+  background-color: rgb(38 38 38 / var(--tw-bg-opacity));
 }
 
 @media (min-width: 768px) {
