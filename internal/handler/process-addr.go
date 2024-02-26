@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -37,16 +36,16 @@ func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
 	domainWithWWW := "www." + strings.TrimPrefix(addrUrl.Hostname(), "www.")
 
 	c := colly.NewCollector(
-		colly.Async(true),
+		colly.Async(false),
 		colly.MaxDepth(4),
 		colly.AllowedDomains(domainWithWWW, domainWithoutWWW),
-		colly.CacheDir("./cache"),
+		// colly.CacheDir("./cache"),
 	)
 
-	c.Limit(&colly.LimitRule{
-		DomainGlob:  "*.*",
-		Parallelism: 10,
-	})
+	// c.Limit(&colly.LimitRule{
+	// 	DomainGlob:  "*.*",
+	// 	Parallelism: 10,
+	// })
 
 	c.OnRequest(func(r *colly.Request) {
 		r.Ctx.Put("rootURL", r.URL.String())
@@ -58,13 +57,12 @@ func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		e.Request.Ctx.Put("referrerURL", e.Request.URL.String())
+		e.Request.Ctx.Put("currTitle", e.Text)
+
 		targetURL = e.Request.AbsoluteURL(targetURL)
 		targetURL = FormatURL(targetURL)
 		fmt.Println("Visiting URL:", targetURL, "with title:", e.Text)
-		link := model.Link{
-			Link:  targetURL,
-			Title: e.Text,
-		}
 		e.Request.Visit(targetURL)
 	})
 
@@ -108,10 +106,6 @@ func FormatURL(url string) string {
 	var urlFormatted string = url
 	if idx := strings.Index(url, "#"); idx != -1 {
 		urlFormatted = url[:idx] + "/"
-	}
-
-	if !strings.Contains(path.Base(url), ".") && !strings.Contains(url, "?") && !strings.HasSuffix(url, "/") {
-		urlFormatted += "/"
 	}
 
 	return strings.Replace(urlFormatted, "www.", "", 1)
