@@ -10,16 +10,14 @@ templ TableResponseShow(badUrls []model.Route) {
 				<th>Root Path</th>
 				<th>Processed Path</th>
 				<th>Response</th>
-				<th>Title</th>
 			</tr>
 		</thead>
 		<tbody>
 			for _, url := range badUrls {
 				<tr>
-					<td>{ url.RootAddr.String() }</td>
-					<td>{ url.CurrentAddr.String() }</td>
+					<td><a href={ templ.SafeURL(url.RootAddr.String()) } target="_blank" class="truncate text-ellipsis overflow-hidden">{ url.RootTitle }</a></td>
+					<td><a href={ templ.SafeURL(url.CurrentAddr.String()) } target="_blank">{ url.CurrentTitle }</a></td>
 					<td>{ fmt.Sprintf("%d", url.Status) }</td>
-					<td>{ url.Title }</td>
 				</tr>
 			}
 		</tbody>

@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/RATIU5/chewbacca/internal/model"
@@ -14,21 +15,21 @@ import (
 	"github.com/gocolly/colly"
 )
 
-var currentURL *url.URL
-var badURLsList []model.Route
-
 func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
+	var badURLsList []model.Route
+	var mutex sync.Mutex // For safe concurrent access to badURLsList
+
 	startTime := time.Now()
 	queryParams := r.FormValue("addr")
 
 	if queryParams == "" {
-		http.Error(w, "Missing addr query parameter", http.StatusBadRequest)
+		templ.Handler(components.ErrResponseShow("A URL to search was not provided")).ServeHTTP(w, r)
 		return
 	}
 
 	addrUrl, err := url.Parse(queryParams)
 	if err != nil {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		templ.Handler(components.ErrResponseShow("An invalid URL was provided")).ServeHTTP(w, r)
 		return
 	}
 
@@ -48,23 +49,42 @@ func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	c.OnRequest(func(r *colly.Request) {
-		currentURL = r.URL
+		r.Ctx.Put("rootURL", r.URL.String())
 	})
 
 	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		link := e.Attr("href")
-		if !IsValidURL(link) {
+		targetURL := e.Attr("href")
+		if !IsValidURL(targetURL) {
 			return
 		}
 
-		absoluteURL := e.Request.AbsoluteURL(link)
-		formattedURL := FormatURL(absoluteURL)
-		e.Request.Visit(formattedURL)
+		targetURL = e.Request.AbsoluteURL(targetURL)
+		targetURL = FormatURL(targetURL)
+		fmt.Println("Visiting URL:", targetURL, "with title:", e.Text)
+		link := model.Link{
+			Link:  targetURL,
+			Title: e.Text,
+		}
+		e.Request.Visit(targetURL)
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
-		fmt.Println(r.Request.URL.String() + ": " + err.Error())
-		badURLsList = append(badURLsList, model.Route{RootAddr: currentURL, CurrentAddr: r.Request.URL, Status: int16(r.StatusCode)})
+		mutex.Lock()
+		defer mutex.Unlock()
+		referrerURL, er := url.Parse(r.Ctx.Get("referrerURL"))
+		if er != nil {
+			fmt.Println("Error parsing root URL:", err)
+		} else {
+			url := strings.Split(referrerURL.String(), "?")[0]
+			badURLsList = append(badURLsList,
+				model.Route{
+					RootAddr:     referrerURL,
+					RootTitle:    url,
+					CurrentAddr:  r.Request.URL,
+					CurrentTitle: r.Ctx.Get("currTitle"),
+					Status:       int16(r.StatusCode),
+				})
+		}
 	})
 
 	c.Visit(addrUrl.String())
@@ -73,7 +93,7 @@ func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
 	elapsedTime := time.Since(startTime)
 	fmt.Printf("Total execution time: %s\n", elapsedTime)
 
-	fmt.Println("Total URLs visited:", len(badURLsList))
+	fmt.Println("Total Bad URLs:", len(badURLsList))
 	templ.Handler(components.TableResponseShow(badURLsList)).ServeHTTP(w, r)
 }
 
