@@ -6,85 +6,99 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/gocolly/colly"
 )
 
+var visitedUrls = make(map[string]struct{})
+
 func GetRoutesHandler(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now() // Capture the start time
 
 	queryParams := r.URL.Query()
-
 	addrUrl, err := url.ParseRequestURI(queryParams.Get("addr"))
 	if err != nil {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
 
+	baseURL := FormatURL(addrUrl.String())
+	addUrlToCache(baseURL)
+
+	host := addrUrl.Hostname()
+
+	domainWithoutWWW := host
+	domainWithWWW := "www." + host
+	if strings.HasPrefix(host, "www.") {
+		domainWithoutWWW = strings.TrimPrefix(host, "www.")
+		domainWithWWW = host
+	}
+
 	c := colly.NewCollector(
-		colly.AllowedDomains(addrUrl.Host),
 		colly.Async(true),
+		colly.MaxDepth(3),
+		colly.AllowedDomains(domainWithoutWWW, domainWithWWW),
 	)
 
-	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		if !ValidateURL(e.Attr("href")) {
-			return
-		}
-
-		url := e.Request.AbsoluteURL(e.Attr("href"))
-
-		// Format the URL
-		url = FormatURL(url)
-
-		fmt.Println("Visiting", url)
-
-		// e.Request.Visit(url)
+	c.Limit(&colly.LimitRule{
+		DomainGlob:  "*",
+		Parallelism: 10, // Adjust based on your needs
 	})
 
-	// Target all image elements
-	c.OnHTML("img[src]", func(e *colly.HTMLElement) {
-		if !ValidateURL(e.Attr("src")) {
+	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
+		link := e.Attr("href")
+
+		if !ValidateURL(link) {
 			return
 		}
 
-		url := e.Request.AbsoluteURL(e.Attr("src"))
-
-		// Format the URL
+		url := e.Request.AbsoluteURL(link)
 		url = FormatURL(url)
 
-		e.Request.Visit(url)
+		if !urlInCache(url) {
+			addUrlToCache(url)
+			// fmt.Println("Visiting", url)
+			e.Request.Visit(url)
+		}
+	})
+
+	c.OnError(func(r *colly.Response, err error) {
+		fmt.Println(r.Request.URL.String() + ": " + err.Error())
 	})
 
 	c.Visit(addrUrl.String())
+	c.Wait()
+
+	elapsedTime := time.Since(startTime) // Calculate the elapsed time
+	fmt.Println("Total URLs visited:", len(visitedUrls))
+	fmt.Printf("Total execution time: %s\n", elapsedTime)
+
+	visitedUrls = make(map[string]struct{})
 }
 
 func ValidateURL(uri string) bool {
-	// If the link is a telephone number or email address, ignore it
-	if strings.HasPrefix(uri, "tel:") || strings.HasPrefix(uri, "mailto:") {
-		return false
-	}
-
-	// If the link is to an id on the same page, ignore it
-	if strings.HasPrefix(uri, "#") {
-		return false
-	}
-	return true
+	return !(strings.HasPrefix(uri, "tel:") || strings.HasPrefix(uri, "mailto:") || strings.HasPrefix(uri, "#"))
 }
 
 func FormatURL(url string) string {
 	var urlFormatted string = url
-	// Trim any possible id from the URL
-	if strings.Contains(url, "#") {
-		urlFormatted = url[:strings.Index(url, "#")] + "/"
+	if idx := strings.Index(url, "#"); idx != -1 {
+		urlFormatted = url[:idx] + "/"
 	}
 
-	// Add a trailing slash if the URL doesn't have:
-	// - a file extension
-	// - a query string
-	// - a hash
-	// - a trailing slash
-	if !strings.Contains(path.Base(url), ".") && !strings.Contains(url, "?") && !strings.Contains(url, "#") && !strings.HasSuffix(url, "/") {
+	if !strings.Contains(path.Base(url), ".") && !strings.Contains(url, "?") && !strings.HasSuffix(url, "/") {
 		urlFormatted += "/"
 	}
 
-	return urlFormatted
+	return strings.Replace(urlFormatted, "www.", "", 1)
+}
+
+func addUrlToCache(url string) {
+	visitedUrls[url] = struct{}{}
+}
+
+func urlInCache(url string) bool {
+	_, found := visitedUrls[url]
+	return found
 }

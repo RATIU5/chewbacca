@@ -1,15 +1,13 @@
 package model
 
-import "net/url"
-
 type Route struct {
-	RootAddr    url.URL
-	CurrentAddr url.URL
+	RootAddr    string
+	CurrentAddr string
 	Status      int16
 	Title       string
 }
 
-func NewRoute(rootAddr, currentAddr url.URL, status int16, title string) *Route {
+func NewRoute(rootAddr string, currentAddr string, status int16, title string) *Route {
 	return &Route{
 		RootAddr:    rootAddr,
 		CurrentAddr: currentAddr,

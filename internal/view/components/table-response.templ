@@ -1,15 +1,27 @@
 package components
 
-templ TableResponseShow(addr string) {
-    <table id="sse-listener" hx-get={ "/get-routes?addr=" + addr } hx-trigger="load" hx-swap="innnerHTML" hx-target="#row-container">
-        <thead>
-            <tr>
-                <th>Root Path</th>
-                <th>Processed Path</th>
-                <th>Response</th>
-                <th>Title</th>
-            </tr>
-        </thead>
-        <tbody id="row-container"></tbody>
-    </table>
+import "github.com/RATIU5/chewbacca/internal/model"
+import "fmt"
+
+templ TableResponseShow(badUrls []model.Route) {
+	<table>
+		<thead>
+			<tr>
+				<th>Root Path</th>
+				<th>Processed Path</th>
+				<th>Response</th>
+				<th>Title</th>
+			</tr>
+		</thead>
+		<tbody>
+			for _, url := range badUrls {
+				<tr>
+					<td>{ url.RootAddr }</td>
+					<td>{ url.CurrentAddr }</td>
+					<td>{ fmt.Sprintf("%d", url.Status) }</td>
+					<td>{ url.Title }</td>
+				</tr>
+			}
+		</tbody>
+	</table>
 }
