@@ -16,10 +16,10 @@ import (
 var (
 	baseDomain  string
 	visited     sync.Map
-	maxDepth    int = 1
+	maxDepth    int = 3
 	pageLinks       = make(map[string][]model.LinkInfo)
 	pageLinksMu sync.Mutex
-	rateLimit   = make(chan struct{}, 50) // Rate limiting concurrent requests
+	rateLimit   = make(chan struct{}, 20) // Rate limiting concurrent requests
 )
 
 // ProcessAddrHandler handles the /process-addr route
@@ -35,13 +35,6 @@ func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
 	crawl(startURL, 0)
 
 	templ.Handler(components.TableResponseShow(pageLinks)).ServeHTTP(w, r)
-	// Print the links found for each page
-	// for page, links := range pageLinks {
-	// 	fmt.Println("Page:", page)
-	// 	for _, link := range links {
-	// 		fmt.Printf(" - URL: %s, Name: %s, Status: %d, Type: %s\n", link.URL, link.Name, link.Status, link.Type)
-	// 	}
-	// }
 }
 
 // crawl crawls the given link and its children recursively up to the given depth
@@ -52,6 +45,7 @@ func crawl(link string, depth int) {
 		return
 	}
 
+	// Store the link in the visited map to avoid fetching it again
 	if _, loaded := visited.LoadOrStore(link, true); loaded {
 		return
 	}
@@ -76,20 +70,18 @@ func crawl(link string, depth int) {
 
 	var wg sync.WaitGroup
 	doc.Find("a, link, script, img").Each(func(i int, s *goquery.Selection) {
-		href, exists := s.Attr("href")
+		var href string
+		var exists bool
+		href, exists = s.Attr("href")
 		if !exists {
-			src, srcExists := s.Attr("src")
-			if srcExists {
-				href = src
-			}
+			href, exists = s.Attr("src")
 		}
-		if href == "" {
+		if !exists || href == "" {
 			return
 		}
 
 		absoluteURL := resolveURL(link, href)
 		linkType := determineLinkType(s)
-		linkName := s.Text()
 
 		wg.Add(1)
 		go func() {
@@ -98,37 +90,33 @@ func crawl(link string, depth int) {
 			status := fetchStatus(absoluteURL)
 			<-rateLimit // Release the slot
 
-			linkInfo := model.LinkInfo{
-				URL:    absoluteURL,
-				Name:   linkName,
-				Status: status,
-				Type:   linkType,
+			if status != 200 {
+				linkInfo := model.LinkInfo{
+					URL:    absoluteURL,
+					Name:   s.Text(),
+					Status: status,
+					Type:   linkType,
+				}
+
+				pageLinksMu.Lock()
+				pageLinks[link] = append(pageLinks[link], linkInfo)
+				pageLinksMu.Unlock()
 			}
 
-			pageLinksMu.Lock()
-			pageLinks[link] = append(pageLinks[link], linkInfo)
-			pageLinksMu.Unlock()
+			// Recursively crawl if the link is a route, regardless of its status code
+			if linkType == "route" && depth+1 <= maxDepth && sameDomain(absoluteURL, baseDomain) {
+				crawl(absoluteURL, depth+1)
+			}
 		}()
 	})
 
 	wg.Wait()
-
-	if depth < maxDepth {
-		for _, linkInfo := range pageLinks[link] {
-			if linkInfo.Type == "route" && sameDomain(linkInfo.URL, baseDomain) {
-				crawl(linkInfo.URL, depth+1)
-			}
-		}
-	}
 }
 
-// fetchStatus fetches the HTTP status of the given link
-//
-// It returns the status code as an integer
 func fetchStatus(link string) int {
 	resp, err := http.Head(link) // HEAD request to minimize data transfer
 	if err != nil {
-		return 0 // Unable to fetch status, consider handling differently based on requirements
+		return 0 // Unable to fetch status
 	}
 	defer resp.Body.Close()
 	return resp.StatusCode
