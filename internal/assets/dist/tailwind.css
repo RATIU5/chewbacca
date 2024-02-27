@@ -780,10 +780,6 @@ select {
   display: table;
 }
 
-.grid {
-  display: grid;
-}
-
 .h-12 {
   height: 3rem;
 }

@@ -15,7 +15,7 @@ import (
 var (
 	baseDomain  string
 	visited     sync.Map
-	maxDepth    int = 0
+	maxDepth    int = 1
 	pageLinks       = make(map[string][]model.LinkInfo)
 	pageLinksMu sync.Mutex
 	rateLimit   = make(chan struct{}, 20) // Rate limiting concurrent requests

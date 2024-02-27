@@ -14,25 +14,7 @@ func getName(name, url string) string {
 	return "[image]"
 }
 
-func toJSArray() string {
-	return `[
-				["John", "john@example.com", "(353) 01 222 3333", ""],
-				["Mark", "mark@gmail.com", "(01) 22 888 4444", ""],
-				["Eoin", "eoin@gmail.com", "0097 22 654 00033", ""],
-			]`
-}
-
-script graph(routes map[string][]model.LinkInfo) {
-	new gridjs.Grid({
-			columns: ["Page URL", "Link on Page", "Response", "Type"],
-			data: { routes }
-		}).render(document.getElementById("grid"));
-}
-
 templ TableResponseShow(routes map[string][]model.LinkInfo) {
-	<script src="https://cdn.jsdelivr.net/npm/gridjs/dist/gridjs.umd.js"></script>
-	<link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet"/>
-	<div id="grid" onload={ graph(routes) }></div>
 	<table class="relative w-full overflow-auto caption-bottom text-sm">
 		<thead>
 			<tr class="border-b border-neutral-800 transition-colors">
