@@ -18,7 +18,7 @@ var (
 
 func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
 	rootRoute := r.FormValue("addr")
-	rootDomain := getRootDomain(rootRoute) // Implement this function based on your requirements
+	rootDomain := getRootDomain(rootRoute)
 
 	// Initialize the map and start scanning from the root route
 	processedLinks = sync.Map{}
