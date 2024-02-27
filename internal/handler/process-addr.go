@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
+	"strconv"
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
@@ -25,16 +26,32 @@ var (
 // ProcessAddrHandler handles the /process-addr route
 func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
 	runtime.GOMAXPROCS(4)
+
 	startURL := r.FormValue("addr")
 	u, err := url.Parse(startURL)
 	if err != nil {
-		panic(err)
+		templ.Handler(components.ErrResponseShow("That doesn't seem to be a valid URL.")).ServeHTTP(w, r)
+		return
 	}
+
+	depth := r.FormValue("depth")
+	depthInt, err := strconv.Atoi(depth)
+	if err != nil || (depthInt < 1 || depthInt > 3) {
+		templ.Handler(components.ErrResponseShow("That doesn't seem to be a valid depth. I'm looking for a number from 1 to 3.")).ServeHTTP(w, r)
+		return
+	}
+
+	maxDepth = depthInt - 1
+
 	baseDomain = u.Hostname()
 
 	crawl(startURL, 0)
 
 	templ.Handler(components.TableResponseShow(pageLinks)).ServeHTTP(w, r)
+
+	// Cleanup the visited map
+	visited = sync.Map{}
+	pageLinks = make(map[string][]model.LinkInfo)
 }
 
 // crawl crawls the given link and its children recursively up to the given depth

@@ -23,15 +23,30 @@ templ ShowIndex() {
 					hx-indicator="#spinner"
 					hx-disabled-elt="#submitBtn"
 				>
-					<div class="w-full">
-						<input
-							type="text"
-							name="addr"
-							id="addr"
-							placeholder="https://www.example.com/"
-							class="bg-neutral-800 border border-solid border-neutral-700 h-12 px-4 w-full mt-4 rounded-md lg:mb-0 outline-[#FF9908] shadow-none"
-							required
-						/>
+					<div class="flex flex-col gap-4 lg:flex-row">
+						<div class="w-full">
+							<label for="addr" title="The URL to crawl and search for dead links and assets">URL to scan</label>
+							<input
+								type="text"
+								name="addr"
+								id="addr"
+								placeholder="https://www.example.com/"
+								class="bg-neutral-800 border border-solid border-neutral-700 h-12 px-4 w-full mt-2 rounded-md lg:mb-0 outline-[#FF9908] shadow-none"
+								required
+							/>
+						</div>
+						<div class="w-full">
+							<label for="depth">Depth to search</label>
+							<input
+								type="number"
+								name="depth"
+								id="depth"
+								placeholder="2"
+								class="bg-neutral-800 border border-solid border-neutral-700 h-12 px-4 w-full mt-2 rounded-md lg:mb-0 outline-[#FF9908] shadow-none"
+								title="The depth to search through links on each page"
+								required
+							/>
+						</div>
 					</div>
 					<div class="flex flex-col items-center md:flex-row-reverse">
 						<button

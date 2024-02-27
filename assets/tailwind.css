@@ -760,8 +760,8 @@ select {
   margin-bottom: 1rem;
 }
 
-.mt-4 {
-  margin-top: 1rem;
+.mt-2 {
+  margin-top: 0.5rem;
 }
 
 .mt-72 {
@@ -1095,5 +1095,9 @@ button span {
 
   .lg\:max-w-3xl {
     max-width: 48rem;
+  }
+
+  .lg\:flex-row {
+    flex-direction: row;
   }
 }
