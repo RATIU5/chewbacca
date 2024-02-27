@@ -1,6 +1,7 @@
-package handler
+package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,8 +11,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/RATIU5/chewbacca/internal/model"
-	"github.com/RATIU5/chewbacca/internal/view/components"
-	"github.com/a-h/templ"
 )
 
 var (
@@ -23,21 +22,22 @@ var (
 	rateLimit   = make(chan struct{}, 20) // Rate limiting concurrent requests
 )
 
-// ProcessAddrHandler handles the /process-addr route
-func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
+// APICrawlHandler handles the /api/crawl route
+func APICrawlHandler(w http.ResponseWriter, r *http.Request) {
 	runtime.GOMAXPROCS(4)
+	w.Header().Set("Content-Type", "application/json")
 
-	startURL := r.FormValue("addr")
+	startURL := r.URL.Query().Get("url")
 	u, err := url.Parse(startURL)
 	if err != nil || u.Scheme == "" || u.Host == "" {
-		templ.Handler(components.ErrResponseShow("That doesn't seem to be a valid URL.")).ServeHTTP(w, r)
+		w.Write([]byte("{\"error\": \"a valid URL was expected from param 'url'\"}"))
 		return
 	}
 
-	depth := r.FormValue("depth")
+	depth := r.URL.Query().Get("depth")
 	depthInt, err := strconv.Atoi(depth)
 	if err != nil || (depthInt < 1 || depthInt > 3) {
-		templ.Handler(components.ErrResponseShow("That doesn't seem to be a valid depth. I'm looking for a number from 1 to 3.")).ServeHTTP(w, r)
+		w.Write([]byte("{\"error\": \"a valid number (1-3) was expected from param 'depth'\"}"))
 		return
 	}
 
@@ -47,7 +47,12 @@ func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
 
 	crawl(startURL, 0)
 
-	templ.Handler(components.TableResponseShow(pageLinks)).ServeHTTP(w, r)
+	response, err := json.Marshal(pageLinks)
+	if err != nil {
+		w.Write([]byte("{\"error\": \"Error marshalling the crawled links\"}"))
+	}
+
+	w.Write(response)
 
 	// Cleanup the visited map
 	visited = sync.Map{}

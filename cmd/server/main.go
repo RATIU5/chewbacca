@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/RATIU5/chewbacca/internal/handler"
+	"github.com/RATIU5/chewbacca/internal/handler/api"
 )
 
 type server struct{}
@@ -15,6 +16,8 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		handler.IndexHandler(w, r)
 	case "/process-addr":
 		handler.ProcessAddrHandler(w, r)
+	case "/api/crawl":
+		api.APICrawlHandler(w, r)
 	default:
 		handler.NotFoundHandler(w, r)
 	}
