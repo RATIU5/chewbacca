@@ -4,118 +4,165 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
+	"runtime"
 	"sync"
-	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/RATIU5/chewbacca/internal/model"
 	"github.com/RATIU5/chewbacca/internal/view/components"
 	"github.com/a-h/templ"
-	"github.com/gocolly/colly"
 )
 
+var (
+	baseDomain  string
+	visited     sync.Map
+	maxDepth    int = 2
+	pageLinks       = make(map[string][]model.LinkInfo)
+	pageLinksMu sync.Mutex
+	rateLimit   = make(chan struct{}, 20) // Rate limiting concurrent requests
+)
+
+// ProcessAddrHandler handles the /process-addr route
 func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
-	var badURLsList []model.Route
-	var mutex sync.Mutex // For safe concurrent access to badURLsList
-
-	startTime := time.Now()
-	queryParams := r.FormValue("addr")
-
-	if queryParams == "" {
-		templ.Handler(components.ErrResponseShow("A URL to search was not provided")).ServeHTTP(w, r)
-		return
-	}
-
-	addrUrl, err := url.Parse(queryParams)
+	runtime.GOMAXPROCS(4)
+	startURL := r.FormValue("addr")
+	u, err := url.Parse(startURL)
 	if err != nil {
-		templ.Handler(components.ErrResponseShow("An invalid URL was provided")).ServeHTTP(w, r)
+		panic(err)
+	}
+	baseDomain = u.Hostname()
+
+	crawl(startURL, 0)
+
+	templ.Handler(components.TableResponseShow(pageLinks)).ServeHTTP(w, r)
+}
+
+// crawl crawls the given link and its children recursively up to the given depth
+//
+// It populates the pageLinks map with the links found
+func crawl(link string, depth int) {
+	if depth > maxDepth {
 		return
 	}
 
-	domainWithoutWWW := strings.TrimPrefix(addrUrl.Hostname(), "www.")
-	domainWithWWW := "www." + strings.TrimPrefix(addrUrl.Hostname(), "www.")
+	// Store the link in the visited map to avoid fetching it again
+	if _, loaded := visited.LoadOrStore(link, true); loaded {
+		return
+	}
 
-	c := colly.NewCollector(
-		colly.Async(false),
-		colly.MaxDepth(4),
-		colly.AllowedDomains(domainWithWWW, domainWithoutWWW),
-		// colly.CacheDir("./cache"),
-	)
+	resp, err := http.Get(link)
+	if err != nil {
+		fmt.Println("Error fetching:", link, err)
+		return
+	}
+	defer resp.Body.Close()
 
-	// c.Limit(&colly.LimitRule{
-	// 	DomainGlob:  "*.*",
-	// 	Parallelism: 10,
-	// })
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Non-OK HTTP status:", resp.StatusCode, link)
+		return
+	}
 
-	c.OnRequest(func(r *colly.Request) {
-		r.Ctx.Put("rootURL", r.URL.String())
-	})
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		fmt.Println("Error parsing the page:", link, err)
+		return
+	}
 
-	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		targetURL := e.Attr("href")
-		if !IsValidURL(targetURL) {
+	var wg sync.WaitGroup
+	doc.Find("a, link, script, img").Each(func(i int, s *goquery.Selection) {
+		var href string
+		var exists bool
+		href, exists = s.Attr("href")
+		if !exists {
+			href, exists = s.Attr("src")
+		}
+		if !exists || href == "" {
 			return
 		}
 
-		e.Request.Ctx.Put("referrerURL", e.Request.URL.String())
-		e.Request.Ctx.Put("currTitle", e.Text)
+		absoluteURL := resolveURL(link, href)
+		linkType := determineLinkType(s)
 
-		targetURL = e.Request.AbsoluteURL(targetURL)
-		targetURL = FormatURL(targetURL)
-		fmt.Println("Visiting URL:", targetURL, "with title:", e.Text)
-		e.Request.Visit(targetURL)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			rateLimit <- struct{}{} // Acquire a slot
+			status := fetchStatus(absoluteURL)
+			<-rateLimit // Release the slot
+
+			if status != 200 {
+				linkInfo := model.LinkInfo{
+					URL:    absoluteURL,
+					Name:   s.Text(),
+					Status: status,
+					Type:   linkType,
+				}
+
+				pageLinksMu.Lock()
+				pageLinks[link] = append(pageLinks[link], linkInfo)
+				pageLinksMu.Unlock()
+			}
+
+			// Recursively crawl if the link is a route, regardless of its status code
+			if linkType == "route" && depth+1 <= maxDepth && sameDomain(absoluteURL, baseDomain) {
+				crawl(absoluteURL, depth+1)
+			}
+		}()
 	})
 
-	c.OnError(func(r *colly.Response, err error) {
-		mutex.Lock()
-		defer mutex.Unlock()
-		referrerURL, er := url.Parse(r.Ctx.Get("referrerURL"))
-		if er != nil {
-			fmt.Println("Error parsing root URL:", err)
-		} else {
-			url := strings.Split(referrerURL.String(), "?")[0]
-			badURLsList = append(badURLsList,
-				model.Route{
-					RootAddr:     referrerURL,
-					RootTitle:    url,
-					CurrentAddr:  r.Request.URL,
-					CurrentTitle: r.Ctx.Get("currTitle"),
-					Status:       int16(r.StatusCode),
-				})
-		}
-	})
-
-	c.Visit(addrUrl.String())
-	c.Wait()
-
-	elapsedTime := time.Since(startTime)
-	fmt.Printf("Total execution time: %s\n", elapsedTime)
-
-	fmt.Println("Total Bad URLs:", len(badURLsList))
-	templ.Handler(components.TableResponseShow(badURLsList)).ServeHTTP(w, r)
+	wg.Wait()
 }
 
-func IsValidURL(link string) bool {
-	return !(strings.HasPrefix(link, "tel:") ||
-		strings.HasPrefix(link, "mailto:") ||
-		strings.HasPrefix(link, "#") ||
-		strings.HasPrefix(link, "javascript:"))
-}
-
-func FormatURL(url string) string {
-	var urlFormatted string = url
-	if idx := strings.Index(url, "#"); idx != -1 {
-		urlFormatted = url[:idx] + "/"
+func fetchStatus(link string) int {
+	resp, err := http.Head(link) // HEAD request to minimize data transfer
+	if err != nil {
+		return 0 // Unable to fetch status
 	}
-
-	return strings.Replace(urlFormatted, "www.", "", 1)
+	defer resp.Body.Close()
+	return resp.StatusCode
 }
 
-func addUrlToCache(url string) {
-	visitedUrls[url] = struct{}{}
+// determineLinkType determines the type of the given HTML element
+//
+// It can be either "route", "image", "script", "stylesheet" or "unknown"
+func determineLinkType(s *goquery.Selection) string {
+	if s.Is("a") {
+		return "route"
+	} else if s.Is("img") {
+		return "image"
+	} else if s.Is("script") {
+		return "script"
+	} else if s.Is("link") {
+		rel, _ := s.Attr("rel")
+		if rel == "stylesheet" {
+			return "stylesheet"
+		}
+	}
+	return "unknown"
 }
 
-func urlInCache(url string) bool {
-	_, found := visitedUrls[url]
-	return found
+// resolveURL resolves the given href URL against the base URL
+//
+// It returns the resolved URL as a string
+func resolveURL(base, href string) string {
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		return ""
+	}
+	hrefURL, err := url.Parse(href)
+	if err != nil {
+		return ""
+	}
+	return baseURL.ResolveReference(hrefURL).String()
+}
+
+// sameDomain checks if the given link is from the same domain as the base domain
+//
+// It does this by comparing the hostnames of the two URLs
+func sameDomain(link, baseDomain string) bool {
+	u, err := url.Parse(link)
+	if err != nil {
+		return false
+	}
+	return u.Hostname() == baseDomain
 }

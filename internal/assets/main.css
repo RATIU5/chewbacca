@@ -6,14 +6,14 @@
   display: none;
 }
 
-.htmx-request .spinner {
-  display: inline;
+button span {
+  display: flex;
 }
 
-.htmx-request.spinner {
-  display: inline;
+.htmx-request {
+  display: flex;
 }
 
-.htmx-request.spinner ~ .button-text {
+.htmx-request + span {
   display: none;
 }

@@ -21,6 +21,7 @@ templ ShowIndex() {
 					hx-target="#formResponse"
 					hx-swap="innerHTML"
 					hx-indicator="#spinner"
+					hx-disabled-elt="#submitBtn"
 				>
 					<div class="w-full">
 						<input
@@ -35,7 +36,8 @@ templ ShowIndex() {
 					<div class="flex flex-col items-center md:flex-row-reverse">
 						<button
 							type="submit"
-							class="block max-w-md bg-neutral-800 text-sm px-4 mb-2 py-2 w-36 h-12 text-neutral-300 rounded-md hover:bg-neutral-700 active:bg-neutral-700 transition ease"
+							id="submitBtn"
+							class="flex justify-center items-center max-w-md bg-neutral-800 text-sm px-4 mb-2 py-2 w-36 h-12 text-neutral-300 rounded-md hover:bg-neutral-700 disabled:hover:bg-neutral-800 active:bg-neutral-700 transition ease"
 						>
 							<svg
 								class="spinner animate-spin"
@@ -55,7 +57,7 @@ templ ShowIndex() {
 					</div>
 				</form>
 			</div>
-			<div id="formResponse"></div>
+			<div id="formResponse" class="w-full"></div>
 		</div>
 	}
 }

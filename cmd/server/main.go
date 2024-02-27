@@ -15,8 +15,6 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		handler.IndexHandler(w, r)
 	case "/process-addr":
 		handler.ProcessAddrHandler(w, r)
-	case "/get-routes":
-		handler.GetRoutesHandler(w, r)
 	default:
 		handler.NotFoundHandler(w, r)
 	}
@@ -27,7 +25,7 @@ func main() {
 	http.Handle("/", &s)
 
 	// Serve static assets through the /assets/ url path
-	fs := http.FileServer(http.Dir("internal/assets/dist"))
+	fs := http.FileServer(http.Dir("./assets"))
 	http.Handle("/assets/", http.StripPrefix("/assets/", fs))
 
 	fmt.Println("Running on http://localhost:8080")
