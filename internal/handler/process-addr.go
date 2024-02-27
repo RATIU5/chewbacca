@@ -21,6 +21,7 @@ var (
 	rateLimit   = make(chan struct{}, 20) // Rate limiting concurrent requests
 )
 
+// ProcessAddrHandler handles the /process-addr route
 func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
 	startURL := r.FormValue("addr")
 	u, err := url.Parse(startURL)
@@ -31,8 +32,8 @@ func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
 
 	crawl(startURL, 0)
 
-	// Print the links found for each page
 	templ.Handler(components.TableResponseShow(pageLinks)).ServeHTTP(w, r)
+	// Print the links found for each page
 	// for page, links := range pageLinks {
 	// 	fmt.Println("Page:", page)
 	// 	for _, link := range links {
@@ -41,6 +42,9 @@ func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
 	// }
 }
 
+// crawl crawls the given link and its children recursively up to the given depth
+//
+// It populates the pageLinks map with the links found
 func crawl(link string, depth int) {
 	if depth > maxDepth {
 		return
@@ -116,6 +120,9 @@ func crawl(link string, depth int) {
 	}
 }
 
+// fetchStatus fetches the HTTP status of the given link
+//
+// It returns the status code as an integer
 func fetchStatus(link string) int {
 	resp, err := http.Head(link) // HEAD request to minimize data transfer
 	if err != nil {
@@ -125,6 +132,9 @@ func fetchStatus(link string) int {
 	return resp.StatusCode
 }
 
+// determineLinkType determines the type of the given HTML element
+//
+// It can be either "route", "image", "script", "stylesheet" or "unknown"
 func determineLinkType(s *goquery.Selection) string {
 	if s.Is("a") {
 		return "route"
@@ -141,6 +151,9 @@ func determineLinkType(s *goquery.Selection) string {
 	return "unknown"
 }
 
+// resolveURL resolves the given href URL against the base URL
+//
+// It returns the resolved URL as a string
 func resolveURL(base, href string) string {
 	baseURL, err := url.Parse(base)
 	if err != nil {
@@ -153,6 +166,9 @@ func resolveURL(base, href string) string {
 	return baseURL.ResolveReference(hrefURL).String()
 }
 
+// sameDomain checks if the given link is from the same domain as the base domain
+//
+// It does this by comparing the hostnames of the two URLs
 func sameDomain(link, baseDomain string) bool {
 	u, err := url.Parse(link)
 	if err != nil {
