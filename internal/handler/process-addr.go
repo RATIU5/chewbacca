@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"runtime"
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
@@ -18,11 +19,12 @@ var (
 	maxDepth    int = 1
 	pageLinks       = make(map[string][]model.LinkInfo)
 	pageLinksMu sync.Mutex
-	rateLimit   = make(chan struct{}, 20) // Rate limiting concurrent requests
+	rateLimit   = make(chan struct{}, 50) // Rate limiting concurrent requests
 )
 
 // ProcessAddrHandler handles the /process-addr route
 func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
+	runtime.GOMAXPROCS(4)
 	startURL := r.FormValue("addr")
 	u, err := url.Parse(startURL)
 	if err != nil {
