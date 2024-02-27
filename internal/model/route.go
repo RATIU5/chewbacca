@@ -1,8 +1,8 @@
 package model
 
-type Route struct {
-	Route   string
-	URL     string
-	URLText string
-	Status  int16
+type LinkInfo struct {
+	URL    string
+	Name   string
+	Status int
+	Type   string // "route", "image", "script", "stylesheet"
 }

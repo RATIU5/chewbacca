@@ -4,103 +4,159 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/RATIU5/chewbacca/internal/model"
+	"github.com/RATIU5/chewbacca/internal/view/components"
+	"github.com/a-h/templ"
 )
 
 var (
-	processedLinks sync.Map // To store processed links
-	wg             sync.WaitGroup
+	baseDomain  string
+	visited     sync.Map
+	maxDepth    int = 0
+	pageLinks       = make(map[string][]model.LinkInfo)
+	pageLinksMu sync.Mutex
+	rateLimit   = make(chan struct{}, 20) // Rate limiting concurrent requests
 )
 
 func ProcessAddrHandler(w http.ResponseWriter, r *http.Request) {
-	rootRoute := r.FormValue("addr")
-	rootDomain := getRootDomain(rootRoute)
+	startURL := r.FormValue("addr")
+	u, err := url.Parse(startURL)
+	if err != nil {
+		panic(err)
+	}
+	baseDomain = u.Hostname()
 
-	// Initialize the map and start scanning from the root route
-	processedLinks = sync.Map{}
-	wg.Add(1)
-	scanRoute(rootRoute, 0, 3, rootDomain) // Passing rootDomain to scanRoute
+	crawl(startURL, 0)
 
-	wg.Wait() // Wait for all goroutines to finish
-
-	// Iterate over processedLinks and print them
-	processedLinks.Range(func(key, value interface{}) bool {
-		route := value.(model.Route) // Correct type assertion
-		fmt.Printf("Route: %s, URL: %s, Status: %d\n", route.Route, route.URL, route.Status)
-		return true // Continue iteration
-	})
+	// Print the links found for each page
+	templ.Handler(components.TableResponseShow(pageLinks)).ServeHTTP(w, r)
+	// for page, links := range pageLinks {
+	// 	fmt.Println("Page:", page)
+	// 	for _, link := range links {
+	// 		fmt.Printf(" - URL: %s, Name: %s, Status: %d, Type: %s\n", link.URL, link.Name, link.Status, link.Type)
+	// 	}
+	// }
 }
 
-func scanRoute(route string, currentDepth, maxDepth uint8, rootDomain string) {
-	defer wg.Done()
-	if currentDepth > maxDepth {
+func crawl(link string, depth int) {
+	if depth > maxDepth {
 		return
 	}
 
-	// Check if the route is already processed
-	if _, loaded := processedLinks.Load(route); loaded {
+	if _, loaded := visited.LoadOrStore(link, true); loaded {
 		return
 	}
 
-	resp, err := http.Get(route)
+	resp, err := http.Get(link)
 	if err != nil {
-		fmt.Println("Error fetching route:", route, err)
+		fmt.Println("Error fetching:", link, err)
 		return
 	}
 	defer resp.Body.Close()
 
-	document, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		fmt.Println("Error parsing the document:", err)
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Non-OK HTTP status:", resp.StatusCode, link)
 		return
 	}
 
-	status := int16(resp.StatusCode)
-	newRoute := model.Route{
-		Route:  route,
-		URL:    route, // Assuming the URL is the route itself
-		Status: status,
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		fmt.Println("Error parsing the page:", link, err)
+		return
 	}
-	processedLinks.Store(route, newRoute)
 
-	document.Find("a").Each(func(index int, element *goquery.Selection) {
-		href, exists := element.Attr("href")
-		if exists && IsValidURL(href) {
-			// Correctly form the full URL if href is a relative path
-			absoluteHref := href
-			if !strings.HasPrefix(href, "http") {
-				absoluteHref = rootDomain + href
-			}
-			// Ensure the link is within the root domain
-			if strings.HasPrefix(absoluteHref, rootDomain) {
-				wg.Add(1)
-				go func(link string) {
-					scanRoute(link, currentDepth+1, maxDepth, rootDomain)
-				}(absoluteHref)
+	var wg sync.WaitGroup
+	doc.Find("a, link, script, img").Each(func(i int, s *goquery.Selection) {
+		href, exists := s.Attr("href")
+		if !exists {
+			src, srcExists := s.Attr("src")
+			if srcExists {
+				href = src
 			}
 		}
+		if href == "" {
+			return
+		}
+
+		absoluteURL := resolveURL(link, href)
+		linkType := determineLinkType(s)
+		linkName := s.Text()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			rateLimit <- struct{}{} // Acquire a slot
+			status := fetchStatus(absoluteURL)
+			<-rateLimit // Release the slot
+
+			linkInfo := model.LinkInfo{
+				URL:    absoluteURL,
+				Name:   linkName,
+				Status: status,
+				Type:   linkType,
+			}
+
+			pageLinksMu.Lock()
+			pageLinks[link] = append(pageLinks[link], linkInfo)
+			pageLinksMu.Unlock()
+		}()
 	})
+
+	wg.Wait()
+
+	if depth < maxDepth {
+		for _, linkInfo := range pageLinks[link] {
+			if linkInfo.Type == "route" && sameDomain(linkInfo.URL, baseDomain) {
+				crawl(linkInfo.URL, depth+1)
+			}
+		}
+	}
 }
 
-func IsValidURL(link string) bool {
-	// Your existing validation logic
-	return !(strings.HasPrefix(link, "tel:") ||
-		strings.HasPrefix(link, "mailto:") ||
-		strings.HasPrefix(link, "#") ||
-		strings.HasPrefix(link, "javascript:"))
+func fetchStatus(link string) int {
+	resp, err := http.Head(link) // HEAD request to minimize data transfer
+	if err != nil {
+		return 0 // Unable to fetch status, consider handling differently based on requirements
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode
 }
 
-// getRootDomain extracts the root domain from a given URL.
-// Implement this based on your URL structure and validation needs.
-func getRootDomain(urlAddr string) string {
-	// Simple example implementation, adjust as needed
-	parsedURL, err := url.Parse(urlAddr)
+func determineLinkType(s *goquery.Selection) string {
+	if s.Is("a") {
+		return "route"
+	} else if s.Is("img") {
+		return "image"
+	} else if s.Is("script") {
+		return "script"
+	} else if s.Is("link") {
+		rel, _ := s.Attr("rel")
+		if rel == "stylesheet" {
+			return "stylesheet"
+		}
+	}
+	return "unknown"
+}
+
+func resolveURL(base, href string) string {
+	baseURL, err := url.Parse(base)
 	if err != nil {
 		return ""
 	}
-	return parsedURL.Scheme + "://" + parsedURL.Host
+	hrefURL, err := url.Parse(href)
+	if err != nil {
+		return ""
+	}
+	return baseURL.ResolveReference(hrefURL).String()
+}
+
+func sameDomain(link, baseDomain string) bool {
+	u, err := url.Parse(link)
+	if err != nil {
+		return false
+	}
+	return u.Hostname() == baseDomain
 }

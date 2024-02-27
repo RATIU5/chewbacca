@@ -1,24 +1,65 @@
 package components
 
-import "github.com/RATIU5/chewbacca/internal/model"
 import "fmt"
+import "github.com/RATIU5/chewbacca/internal/model"
+import "strings"
 
-templ TableResponseShow(badUrls map[string]model.Route) {
-	<table>
+func getName(name, url string) string {
+	if strings.TrimSpace(name) != "" {
+		return name
+	}
+	if strings.TrimSpace(url) != "" {
+		return url
+	}
+	return "[image]"
+}
+
+func toJSArray() string {
+	return `[
+				["John", "john@example.com", "(353) 01 222 3333", ""],
+				["Mark", "mark@gmail.com", "(01) 22 888 4444", ""],
+				["Eoin", "eoin@gmail.com", "0097 22 654 00033", ""],
+			]`
+}
+
+script graph(routes map[string][]model.LinkInfo) {
+	new gridjs.Grid({
+			columns: ["Page URL", "Link on Page", "Response", "Type"],
+			data: { routes }
+		}).render(document.getElementById("grid"));
+}
+
+templ TableResponseShow(routes map[string][]model.LinkInfo) {
+	<script src="https://cdn.jsdelivr.net/npm/gridjs/dist/gridjs.umd.js"></script>
+	<link href="https://cdn.jsdelivr.net/npm/gridjs/dist/theme/mermaid.min.css" rel="stylesheet"/>
+	<div id="grid" onload={ graph(routes) }></div>
+	<table class="relative w-full overflow-auto caption-bottom text-sm">
 		<thead>
-			<tr>
-				<th>Root Path</th>
-				<th>Processed Path</th>
-				<th>Response</th>
+			<tr class="border-b border-neutral-800 transition-colors">
+				<th class="h-12 px-4 text-left align-middle text-muted-foreground">Root Path</th>
+				<th class="h-12 px-4 text-left align-middle text-muted-foreground">Processed Path</th>
+				<th class="h-12 px-4 text-left align-middle text-muted-foreground">Response</th>
+				<th class="h-12 px-4 text-left align-middle text-muted-foreground">Type</th>
 			</tr>
 		</thead>
 		<tbody>
-			for _, url := range badUrls {
-				<tr>
-					<td><a href={ templ.SafeURL(url.Route) } target="_blank" class="truncate text-ellipsis overflow-hidden">{ url.Route }</a></td>
-					<td><a href={ templ.SafeURL(url.URL) } target="_blank">{ url.URLText }</a></td>
-					<td>{ fmt.Sprintf("%d", url.Status) }</td>
-				</tr>
+			for route, links := range routes {
+				for _, link := range links {
+					<tr class="even:bg-neutral-800 rounded-md overflow-hidden">
+						<td class="max-w-72 w-full p-4 align-middle font-medium">
+							<a href={ templ.SafeURL(route) } target="_blank" title={ route } class="truncate block max-w-64 w-full">{ route }</a>
+						</td>
+						<td class="max-w-72 w-full p-4 align-middle font-medium">
+							<a href={ templ.SafeURL(link.URL) } target="_blank" title={ getName(link.Name, link.URL) } class="truncate block max-w-64 w-full">{ getName(link.Name, link.URL) }</a>
+						</td>
+						<td class="max-w-20 p-4 align-middle font-medium">
+							{ fmt.Sprintf("%d", link.Status) }
+						</td>
+						<td class="max-w-32 p-4 align-middle font-medium">
+							{ link.Type }
+						</td>
+					</tr>
+				}
 			}
 		</tbody>
 	</table>
